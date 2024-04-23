@@ -8,3 +8,4 @@ Console versions such as PSP/PSV/PS4 are not supported by us. What we currently 
 A data structure known to us (currently only in Chinese) is included in the file.
 
 Source Code:https://github.com/HaoJun0823/GECV-OLD
+Due to the end of the project and the sensitivity relative to the game, I will not provide help with the source code, it will only be open. If you have any questions, please report here.
