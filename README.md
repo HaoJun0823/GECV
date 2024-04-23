@@ -6,3 +6,5 @@ If you want to do more, you will still need a binary editor to modify game data,
 Console versions such as PSP/PSV/PS4 are not supported by us. What we currently have is only applicable to the PC version.
 
 A data structure known to us (currently only in Chinese) is included in the file.
+
+Source Code:https://github.com/HaoJun0823/GECV-OLD
