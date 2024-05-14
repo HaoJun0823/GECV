@@ -9,3 +9,5 @@ A data structure known to us (currently only in Chinese) is included in the file
 
 Source Code:https://github.com/HaoJun0823/GECV-OLD
 Due to the end of the project and the sensitivity relative to the game, I will not provide help with the source code, it will only be open. If you have any questions, please report here.
+
+# This is the PC version of the toolkit, don't expect too much from other platforms.
