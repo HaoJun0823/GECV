@@ -45,6 +45,7 @@ GECV 是对《GOD EATER》（噬神者 / ゴッドイーター）PC 版数据结
 | tr2 表格 | [`docs/formats/tr2-reading.md`](docs/formats/tr2-reading.md)、[`tr2-primary-key.md`](docs/formats/tr2-primary-key.md) |
 | kst1 键值库 | [`docs/formats/kst1.md`](docs/formats/kst1.md) |
 | 资源拓扑 | [`docs/topology.md`](docs/topology.md)、[`topology-graph.md`](docs/topology-graph.md) |
+| 打包机制（谁套谁） | [`docs/packaging.md`](docs/packaging.md) |
 
 ### 环境
 
@@ -149,6 +150,7 @@ Formats currently covered:
 | tr2 tables | [`docs/formats/tr2-reading.md`](docs/formats/tr2-reading.md), [`tr2-primary-key.md`](docs/formats/tr2-primary-key.md) |
 | kst1 key-value store | [`docs/formats/kst1.md`](docs/formats/kst1.md) |
 | Resource topology | [`docs/topology.md`](docs/topology.md), [`topology-graph.md`](docs/topology-graph.md) |
+| Packaging (what wraps what) | [`docs/packaging.md`](docs/packaging.md) |
 
 ### Requirements
 

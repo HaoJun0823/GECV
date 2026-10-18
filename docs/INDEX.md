@@ -8,6 +8,7 @@
 |---|---|
 | [`pres-illustrated.md`](formats/pres-illustrated.md) | **看不懂字段？这里有两个完整文件的逐字节解读（tbl / rtbl）** |
 | [`design-rationale.md`](formats/design-rationale.md) | **rtbl / tbl / kst1 / tr2 各自是干什么的？为什么这样设计？为什么不合并？** |
+| [`packaging.md`](packaging.md) | **哪些包是玩家服装？哪些是关卡场景？武器/道具/任务在哪一层？** |
 
 `pres-illustrated.md` 适合"想建立直觉"，`design-rationale.md` 适合"理解设计意图"。
 读完这两篇能建立全局观：**PRES/tbl/rtbl 管"资源在哪"，kst1/tr2 管"数据是什么"**。
@@ -43,6 +44,7 @@
 | [`topology.md`](topology.md) | 资源拓扑总述 |
 | [`topology-graph.md`](topology-graph.md) | 引用模型与三层拓扑图方案 |
 | [`reference-chain.md`](reference-chain.md) | 引用链的完整追踪 |
+| [`packaging.md`](packaging.md) | **res 包谁套谁：服装 / 场景 / 武器 / 道具 / 任务各自的落点** |
 
 ---
 
