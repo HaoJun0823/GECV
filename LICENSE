@@ -1,0 +1,173 @@
+CODE EATER Project License
+Copyright (c) 2026 CODE EATER (CODE EATER 小组), qingyu0510, and contributors.
+All rights reserved.
+Homepage: https://www.haojun0823.xyz
+Github: https://github.com/HaoJun0823
+
+----------------------------------------------------------------------
+Main License — GPL-3.0-or-later (STRICT)
+----------------------------------------------------------------------
+
+This project (including but not limited to: source code, format
+documentation, research notes, tooling, and any derived data authored
+for it) is licensed under:
+
+    GNU General Public License v3.0 or later
+
+SPDX-License-Identifier: GPL-3.0-or-later
+
+The full license text is available at:
+    https://www.gnu.org/licenses/gpl-3.0.txt
+    ./LICENSES/GPLv3.txt
+
+This is a STRONG, BINDING license requirement. Any use, modification,
+or redistribution of this project or any substantial portion of it MUST
+comply with GPL-3.0-or-later in full. This includes, without limitation:
+
+  1. SOURCE DISCLOSURE. Any distributed binary or derived work MUST make
+     the complete corresponding source code available under the same
+     license. You may not ship this project, or a work based on it, in
+     closed-source form.
+
+  2. SAME LICENSE. Derivative works MUST be licensed under
+     GPL-3.0-or-later. You may not relicense this project under a more
+     permissive or proprietary license, and you may not add terms that
+     restrict the freedoms GPL-3.0 grants.
+
+  3. NOTICE PRESERVATION. Copyright notices, the list of authors, and
+     this license notice MUST be preserved in all copies and substantial
+     portions. Do not remove or obscure attribution to CODE EATER
+     (CODE EATER 小组), qingyu0510, and contributors.
+
+  4. NO ADDITIONAL RESTRICTIONS. You may not impose further restrictions
+     (technical, contractual, or otherwise) on downstream recipients
+     beyond those in GPL-3.0.
+
+  5. PATENT GRANT. The GPL-3.0 patent provisions apply in full.
+
+Using this project in whole or in part constitutes acceptance of these
+terms. If you do not accept them, you have no right to use this project.
+
+----------------------------------------------------------------------
+Authorship and Ownership
+----------------------------------------------------------------------
+
+All intellectual property in the original content of this project
+(the format specifications, the research conclusions, the tooling, and
+the documentation) is the property of:
+
+    CODE EATER 小组 (CODE EATER team)
+    qingyu0510
+    and other named/unnamed contributors
+
+Attribution in any redistribution, publication, or derivative work is
+mandatory. "Based on GECV by CODE EATER (CODE EATER 小组), qingyu0510
+and contributors" is the required form.
+
+----------------------------------------------------------------------
+Game Copyright Notice (GOD EATER Series)
+----------------------------------------------------------------------
+
+This project is an independent, unofficial research and tooling effort
+targeting GOD EATER RESURRECTION and GOD EATER 2 Rage Burst on PC.
+It is NOT affiliated with, endorsed by, sponsored by, or approved by the
+rights holders of those games.
+
+GOD EATER (噬神者 / ゴッドイーター) and all related titles, characters,
+artwork, music, story, and trademarks are the property of their
+respective rights holders, including BANDAI NAMCO Entertainment Inc. and
+SHIFT Inc. All rights reserved.
+
+This project redistributes NO game assets. It provides only:
+  - format documentation (reverse-engineering findings)
+  - source code for reading/parsing those formats
+  - analysis tooling
+
+Any game data required for use must be obtained from the user's own
+legally acquired copy of the game. The games themselves are not
+redistributed here and remain governed by their own licenses.
+
+Reverse engineering performed here is for interoperability research and
+preservation purposes only.
+
+----------------------------------------------------------------------
+Additional Terms
+----------------------------------------------------------------------
+
+In addition to GPL-3.0-or-later, the following applies:
+
+  1. NO GAME ASSET REDISTRIBUTION. This project MUST NOT be used to
+     redistribute copyrighted game assets. Tools here operate on the
+     user's own game data.
+
+  2. NO WARRANTY OF FITNESS FOR MODDING. The documentation and tooling
+     describe observed behavior. They are not a guarantee that any
+     modification will work or will not corrupt data.
+
+  3. CONTRIBUTIONS. By submitting a contribution, you agree to license
+     it under GPL-3.0-or-later and grant CODE EATER (CODE EATER 小组)
+     and qingyu0510 a perpetual, non-exclusive right to include it.
+
+----------------------------------------------------------------------
+Third-Party Components
+----------------------------------------------------------------------
+
+The following are used as references or dependencies and are NOT
+covered by the main license of this project:
+
+  - zlib — zlib License — Copyright (c) Jean-loup Gailly and Mark Adler
+    Used by the game itself; the Python implementation here uses only
+    the standard library.
+
+  - Reference C# implementation (Pres.cs, shared by a third party)
+    NOT redistributed in this repository. Used solely as a hypothesis
+    source; all algorithms here are independently rewritten.
+
+  - GodEaterTools (console-platform PRES tooling)
+    External repository, separate relationship. Used as a cross-check
+    reference only.
+
+----------------------------------------------------------------------
+Disclaimer
+----------------------------------------------------------------------
+
+The main license of this project, GNU General Public License v3.0 or
+later, includes its own warranty disclaimer and limitation of liability.
+The following is a project-specific summary and does not replace,
+modify, or override the main license. The main license controls in case
+of any conflict.
+
+THE SOFTWARE AND DOCUMENTATION ARE PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+You accept full responsibility for any consequence of using this
+project, including but not limited to game data corruption, save loss,
+account issues, or violation of any third party's terms of service.
+
+----------------------------------------------------------------------
+Scope Notes
+----------------------------------------------------------------------
+
+  * This repository covers the PC versions of GOD EATER RESURRECTION and
+    GOD EATER 2 Rage Burst only. PSP / PSV / PS4 formats are documented
+    only for comparison, not supported by the tooling here.
+
+  * The documentation describes the on-disk format as observed. It is
+    research output, not an official specification.
+
+  * No game executable is modified, redistributed, or replaced by this
+    project.
+
+----------------------------------------------------------------------
+Notes
+----------------------------------------------------------------------
+
+This file describes the main license, authorship, game copyright notice,
+additional terms, third-party components, and disclaimer of this project.
+
+The canonical license text: https://www.gnu.org/licenses/gpl-3.0.txt
