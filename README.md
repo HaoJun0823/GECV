@@ -4,7 +4,7 @@
 
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Status](https://img.shields.io/badge/status-active-brightgreen.svg)]()
+[![Status](https://img.shields.io/badge/status-active-brightgreen.svg)](https://github.com/HaoJun0823/GECV/commits/main)
 
 > 仓库由 CODE EATER 小组维护。格式文档为中文，暂不提供英文版。
 
