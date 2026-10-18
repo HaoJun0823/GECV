@@ -1,0 +1,21 @@
+# Python 字节码与缓存
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 本地临时与审计产物（不入版本库）
+_trash/
+_temp/
+_acl-report/
+
+# 中间产物 / 解包区：含数百 MB~GB 级 IDA 数据库与游戏解包资源
+work/
+
+# IDA 数据库及相关文件
+*.i64
+*.id0
+*.id1
+*.id2
+*.nam
+*.til
+x
