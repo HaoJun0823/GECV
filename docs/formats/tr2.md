@@ -245,7 +245,7 @@ exe 中的格式化字符串，来自解析器自身：
 | MCP `idb_open` GER.exe.i64（458 MB） | 超时；**后台确实启动了 worker**（`GER.exe.id0` 写到 232 MB）后死亡 |
 | MCP `idb_open` GER.exe（松散集） | 超时 |
 | MCP `idb_open` GE2RB.exe.i64（456 MB） | 超时 |
-| MCP `idb_open` `work/idafresh/GER_fresh.id0` | 超时 |
+| MCP `idb_open` 重建的 IDB | 超时 |
 | MCP `idb_open` `tiny.i64`（41 KB） | **✅ 秒开，Hex-Rays 就绪** |
 | 便携版 `idat.exe -A` 直开 GER.exe | 可启动（CPU 3000+ 秒仍未完成全量分析） |
 | 便携版打开已建松散集并存盘 | `error code 1 / 4` |
@@ -267,7 +267,7 @@ worker 每次都被启动、工作一段时间、然后被截断。
 
 ### 10.4 可直接复用
 
-`work/ida_query2.py` —— 已写好的 IDAPython 查询脚本（结果写 `RESULT.txt`），
+一个 IDAPython 查询脚本（结果写 `RESULT.txt`），
 已修正 import 与输出通道问题。
 
 ---
@@ -276,7 +276,7 @@ worker 每次都被启动、工作一段时间、然后被截断。
 
 | 项 | 值 |
 |---|---|
-| IDA 安装位置 | `G:\Downloads\ida93sp2\portable_win\`（**便携版，不在 PATH**） |
+| IDA 安装位置 | 便携版安装目录（**不在 PATH**，需自行指定） |
 | 版本 | 9.3.26.0421 |
 | Hex-Rays | 9.3.0.260421（**decompiler 可用**） |
 | license | `idapro.hexlic` 存在且有效 |

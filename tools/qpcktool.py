@@ -248,7 +248,7 @@ def build_parser() -> argparse.ArgumentParser:
   python -m tools.qpcktool hash system/resident/actor_table.bin
 
   # 模拟引擎加载顺序，从游戏目录取一个资源 / Fetch a resource the way the engine does
-  python -m tools.qpcktool cat "system/resident/actor_table.bin" --gamedir "H:/SteamLibrary/steamapps/common/GOD EATER RESURRECTION"
+  python -m tools.qpcktool cat "system/resident/actor_table.bin" --gamedir "<游戏安装目录>"
 
 退出码 / Exit codes
 -------------------

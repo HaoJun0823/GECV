@@ -242,11 +242,11 @@ def build_parser() -> argparse.ArgumentParser:
 示例 / Examples
 ---------------
   # 只看 PRES 树 / PRES tree only
-  python -m tools.prestool names --gamedir "H:/SteamLibrary/steamapps/common/GOD EATER RESURRECTION" \\
+  python -m tools.prestool names --gamedir "<游戏安装目录>" \\
       --out work/names_ger.txt
 
   # 同时扫描 .rtbl（推荐，能多出数万条）/ also scan .rtbl (recommended, adds tens of thousands)
-  python -m tools.prestool names --gamedir "H:/SteamLibrary/steamapps/common/GOD EATER RESURRECTION" \\
+  python -m tools.prestool names --gamedir "<游戏安装目录>" \\
       --out work/names_ger_full.txt --rtbl
 
   # 用名字表解包 / Unpack using the name map

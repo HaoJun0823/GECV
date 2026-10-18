@@ -262,12 +262,12 @@ qpck 归档
 
 ```bash
 # 1) 提取 PRES 拓扑（双通道）
-python work/topo_v2.py
-# 输出 work/topology/{GER,GE2RB}.v2.graph.json + .summary.txt
+python <本地拓扑脚本>        # 生成 {GER,GE2RB} 的图 JSON + 摘要
+# 输出：图数据 + 摘要文本（本地中间产物，不入库）
 
 # 2) tr2 字段普查
-python work/field_census.py
+python <本地字段普查脚本>
 
 # 3) 资源按业务分类
-python work/categorize.py
+python <本地分类脚本>
 ```

@@ -432,13 +432,13 @@ python -m tools.ksttool info --gamedir "<game>" --path "<kst>"
 
 # 导出全部为 TSV
 python -m tools.ksttool export --gamedir "<game>" --all \
-    --names work/names_ger_full.txt --out out --format tsv
+    --names <本地名字表.txt> --out out --format tsv
 
 # 按 key 查询
 python -m tools.ksttool key --gamedir "<game>" --path "<kst>" 255 256
 
 # 全部自检
-python -m tools.ksttool verify --gamedir "<game>" --names work/names_ger_full.txt
+python -m tools.ksttool verify --gamedir "<game>" --names <本地名字表.txt>
 ```
 
 ### 6.2 导出实测结果（GER，18 个文件）

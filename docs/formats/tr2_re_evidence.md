@@ -5,7 +5,7 @@
 > Evidence class: taken from symbol strings inside the EXE itself -- traces left by the
 > engine -- which outranks our earlier data-consistency inference.
 
-目标文件：`H:\SteamLibrary\steamapps\common\GOD EATER RESURRECTION\GER.exe`
+目标文件：`<游戏安装目录>/GER.exe`
 PE：machine `0x014C`（x86 32 位）、optional_magic `0x010B`（PE32）、ImageBase `0x00400000`、11 个节区。
 
 ---

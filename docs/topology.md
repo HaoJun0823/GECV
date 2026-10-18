@@ -133,9 +133,11 @@
 | `bnsf/is14` | 万代魔改 G722.1C，vgmstream 可解 |
 | `gnf` | 内含若干 dds：count + 每个 dds 大小 + dds 数据 |
 
-> **`tr2` 特别提示**：你已在 `G:\Projects\GECV_OLD\GECV II\GECV_EX` 里有可运行的打包/解包实现，
-> 且名字表里 GER 有 **19,486 条** `tr2` 后缀资源（占比最高）。
+> **`tr2` 特别提示**：早期的 GECV_OLD 仓库里另有可运行的打包/解包实现；
+> 名字表里 GER 有 **19,486 条** `tr2` 后缀资源（占比最高）。
 > 它是真正的游戏数据表（角色/武器/任务等），优先级应当很高。
+> 现行实现与规格见 [`formats/tr2-primary-key.md`](formats/tr2-primary-key.md)、
+> [`formats/tr2-reading.md`](formats/tr2-reading.md)。
 
 ---
 

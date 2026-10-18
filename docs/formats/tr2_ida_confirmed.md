@@ -5,7 +5,7 @@
 > Evidence class A: everything here comes from actual disassembly / Hex-Rays pseudocode of
 > `GER.exe_full.i64`. No inference remains; earlier B/C-level guesses are adjudicated below.
 
-数据库：`H:\SteamLibrary\steamapps\common\GOD EATER RESURRECTION\GER.exe_full.i64`
+数据库：`<游戏安装目录>/GER.exe_full.i64`
 （IDA 9.3，x86-32，ImageBase `0x00400000`）
 
 ---
@@ -406,7 +406,7 @@ tr2cInsStrTerm          tr2cInsStrTermU8        tr2cPsSnprintfIns4U8
 
 ```python
 # MCP（IDA Pro MCP 服务已配置）
-idb_open("H:/SteamLibrary/steamapps/common/GOD EATER RESURRECTION/GER.exe_full.i64",
+idb_open("<游戏安装目录>/GER.exe_full.i64",
          run_auto_analysis=False)      # 关键：不要重新分析
 
 # 定位 tr2 函数

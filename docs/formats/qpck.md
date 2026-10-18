@@ -175,7 +175,10 @@ FileA = CreateFileA(p_FileName, ...);
 代码里的对应实现是 `MultiArchive` 类：
 
 ```python
-ma = MultiArchive([r"H:/.../bin_patch.qpck", r"H:/.../bin.qpck"])
+from gecv.qpck import MultiArchive
+
+ma = MultiArchive(["<游戏安装目录>/bin_patch.qpck",
+                   "<游戏安装目录>/bin.qpck"])
 data = ma.read_path("some/resource.bin")   # 自动命中优先级最高的归档
 ```
 
@@ -286,13 +289,13 @@ mod 覆盖机制成立。
 python -m tools.qpcktool info <file.qpck> --list
 
 # 2. 解包（生成 manifest.jsonl）
-python -m tools.qpcktool unpack <file.qpck> --out work/extracted
+python -m tools.qpcktool unpack <file.qpck> --out out/extracted
 
 # 3. 重新打包
-python -m tools.qpcktool pack --manifest work/extracted/manifest.jsonl --out work/new.qpck
+python -m tools.qpcktool pack --manifest out/extracted/manifest.jsonl --out out/new.qpck
 
 # 4. 与原文件逐字节比对
-python -m tools.qpcktool verify <file.qpck> --dir work/extracted --source <file.qpck>
+python -m tools.qpcktool verify <file.qpck> --dir out/extracted --source <file.qpck>
 ```
 
 ### 8.1 实测结果
@@ -312,9 +315,9 @@ python -m tools.qpcktool verify <file.qpck> --dir work/extracted --source <file.
 
 ## 9. 参考实现的来源说明
 
-本格式的最初知识来自一份**他人分享的 C# 参考实现**，位于 `_temp/` 目录下。
+本格式的最初知识来自一份**他人分享的 C# 参考实现**（本地留档，未纳入版本控制）。
 
-⚠️ **该目录的内容不可提交进本仓库**（属于第三方分享物）。本文档与
+⚠️ **该实现不可提交进本仓库**（属于第三方分享物）。本文档与
 `src/gecv/` 下的代码均为**独立重写**，不含其原始代码文本。
 
 我们采用的做法是：**把它的规格当作待验证的假设，用自己的代码在真实文件上验证**。

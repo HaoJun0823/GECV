@@ -631,7 +631,7 @@ assert align16(cursor) == file_size               # ← 实测全部成立
 | 尾部池链式偏移 == 实际 | **8,523 / 8,523** |
 | entry 头数组连续且起点 `+0x40` | **105,688 / 105,688** |
 
-复现脚本：`_temp/pres_predict.py`、`_temp/pres_tail.py`（见 §15）。
+复现方式：用本地脚本按本节算法逐地址重算并与文件比对（见 §15）。
 
 ---
 
@@ -807,73 +807,223 @@ if (sub_1DAA5E0(v4)) {                      // 是子 res ⇒ 走"再开一次�
 3 words 68,270 / 5 words 31,181 / 7 words 10,666 / 8 words 10,132 … 最长 **2,641 words**
 （`PredatorArtsRequire_tbl`）。
 
-#### 8.5.1 【已定论】tbl 的值是什么
+#### 8.5.1 【已定论】tbl 的表头在哪里
 
-**结论：`tbl` 的每个 u32 是「同一 country 内 `ds2`(asset) 列表的下标」。**
+**结论：载荷内部没有表头。tbl 的"表头"在 PRES entry 头里。**
 
-证据链（详见下方裁决）：
+载荷从第 0 个 word 起就是数据，没有任何 `rowCount` / `colCount` / magic / 长度前缀。
 
-| 检验 | 结果 |
-|---|---|
-| 值域落在同 country 的 ds2 长度内 | 800,604 / 869,379 |
-| 其中被指向的 ds2 条目名与表名同族 | **192,781 条强命中**（ds2 远优于其它宿主） |
-| 指向 ds4(conf) | 仅 2,174 条 |
-| 指向 ds6(text) | 72 条 |
-| 完全找不到宿主 | 674,352 条（多为全局 ID 空间，见下） |
+**四项否证（全量 336,098 条 GER F 条目）**
 
-**最能说明问题的样本**（入口 PRES，ds2 的序号与名字）：
-
-| 表名 | 值 | 指向的 ds2 条目 | 是否同族 |
-|---|---|---|---|
-| `SystemSe_tbl` | `[12..20]` | `SE_SYS_ENTER1` … `SE_SYS_PAGE2` | ✅ 完全对应 |
-| `Layout_Chat_tbl` | `[33]` | `Layout_Chat` | ✅ 精确命中 |
-| `Ssa_System_Cursor_tbl` | `[3, 4]` | ds2#3/#4（**type 0 空名占位**） | ⚠️ 见注意事项 |
-| `GameBgm_tbl` | `[15,16,6,…]` | ds2#15=`SE_SYS_ERROR1` … 且越界 | ❌ 宿主不是 ds2 |
-
-**高一致性族名**（宿主几乎 100% 是 ds2，样本量大）：
-
-| 表族 | 命中条数 | 宿主 |
+| 假说 | 命中 | 判定 |
 |---|---|---|
-| `EnemyEntry` | 11,478 | ds2 |
-| `GeometryVolume` | 11,478 | ds2 |
-| `Oracle` | 11,466 | ds2 |
-| `Dig` | 11,418 | ds2 |
-| `QuestFlow` | 10,956 | ds2 |
-| `Layout_Layout_obj` | 9,290 | ds2 |
-| `Light_light1_obj` / `Light_light2_obj` | 9,269 | ds2 |
-| `Glare_Glare_obj` | 9,263 | ds2 |
-| `Fog_Fog_obj` | 9,164 | ds2 |
-| `PC_Face_obj` / `PC_Hair_obj` | 8,935 | ds2 |
-| `Camera_camera1_obj` | 8,612 | ds2 |
-| `Screen_Screen_obj` | 7,906 | ds2 |
-| `MetaMotion` / `BloodRagePledgeImage` | 3,074 | ds2 |
+| `word[0] == size-1`（长度头） | 33,279 | 9.9%，**否** |
+| `word[0]` 是列数，`size % cols == 0` | 5,416 | 1.6%，**否** |
+| `(size-1) % word[0] == 0`（头 + 行的列数） | 67,553 | 20.1%，**否** |
+| `word[1] == size/2`（`(rows, cols)` 头） | 1,344 | 0.4%，**否** |
+| `word[0] == 0` | 16,612 | 5.0%，说明首字是普通数据值 |
 
-> **注意 ds2 下标包含 type 0 空名占位**：入口 PRES 的 ds2 前 6 条是 type 0（无名字、无数据），
-> 所以 `Ssa_System_Cursor_tbl = [3, 4]` 指向的是空名占位而不是同名资源。
-> 这说明 **下标是"数组位置"，不是"有效资源计数"**——重建时若删除 type 0 占位，
-> 所有 `tbl` 的索引都会错位。**这是改包时最容易翻车的地方。**
+**决定性反证**：`Chat_Bg_idx_tbl` 在同族 12 个实例中**首字恒为 24**，而 24 正是它在 ds2 中
+指向的 `System_Tip8x8` 的序号。若首字是表头，它不该随数据变化；
+若首字是数据，则"首字 = 指向的序号"才是唯一自洽的解释。
 
-#### 8.5.2 尚未收敛的部分
+**唯一的表头 = entry 头**
 
-`GameBgm_tbl` 是反例：82 个值覆盖 `[6..87]`，但 ds2 只有 67 条，且映射到 `SE_SYS_*` 语义不符。
-它的值域恰好等于 ds4 中 bgm 段的**序号区间**（ds4#6 起是 `bgm_anagura_001`），
-但按位置映射到 ds4 时 `SystemSe_tbl` 又会指向 bgm（矛盾）。
+| 来源 | 字段 | 作用 |
+|---|---|---|
+| PRES entry `+0x04` | `dataSize` | **元素个数**（单位 u32，×4 = 字节） |
+| PRES entry `names[0]` | 表名 | 语义标识（消费者据此选 stride） |
+| PRES entry `+0x1C` | `decompSize` | 恒 0（tbl 不压缩） |
 
-**当前判断（【推测】）**：`tbl` 的宿主不是一个单一 dataset，而是**按子系统各自维护的 ID 空间**；
-同一 PRES 内不同族的 tbl 可能用不同宿主。已确认 ds2 是**最常见**的宿主。
+#### 8.5.2 【已定论】"形状"存在消费代码里，不在文件里
+
+既然载荷无表头，那"每行几个字段"从哪来？**答案：由读取它的代码决定。**
+
+证据是同族表的长度**高度恒定**（全库 4,357 个表族）：
+
+| 表族 | 实例数 | size 分布 |
+|---|---|---|
+| `ScriptSetup` | 4,879 | **恒 7**（4,879/4,879） |
+| `ScrScript_dat` | 4,879 | **恒 1** |
+| `ResText_dat` | 4,878 | **恒 1** |
+| `Layout_Layout_obj` | 4,825 | **恒 3** |
+| `PC_obj` | 4,639 | **恒 3** |
+| `PC_Hair_obj` | 4,639 | **恒 3** |
+| `PC_Face_obj` | 4,639 | **恒 3** |
+| `Screen_Screen_obj` | 4,140 | **恒 3** |
+| `outro_voice00_obj` | 4,092 | **恒 2** |
+| `bgm00_obj` | 4,092 | **恒 2** |
+| `outro_fade_out_obj` | 4,092 | **恒 3** |
+| `Light_light1_obj` / `light2` / `Ambient` | 4,825 | **各恒 1** |
+| `Glare_Glare_obj` / `Fog_Fog_obj` / `Camera_camera1_obj` | 4,8xx | **各恒 1** |
+
+`ScriptSetup` 在 4,879 个**不同的 res 文件**里长度全是 7 —— 不可能是巧合。
+这意味着存在固定的结构体布局（7 × u32），而该布局只存在于引擎代码里。
+
+对照**变长族**（行数由内容决定，但 stride 仍由代码定）：
+
+| 表族 | 实例数 | 不同 size 数 | 最常见 |
+|---|---|---|---|
+| `Model` | 4,873 | 37 | 13 / 10 / 11 |
+| `Effect` | 2,574 | 38 | 27 / 15 |
+| `UniversalEffectID` | 1,867 | 24 | 14 / 12 |
+| `UseOracle` | 1,866 | 15 | 4 / 3 / 8 |
+| `List_Tbl` | 834 | 11 | 24 / 25 / 26 |
+| `Release` / `Frame` | 389 | 8 | 240 / 242 / 243 |
+
+> **实践含义**：改 tbl 时，**长度（元素个数）不能随便变**，除非你确定消费方按变长读取。
+> 固定形状族（`PC_Face_obj` 等）改长度几乎必然崩；变长族（`Model` 等）只能改行内容、不能改 stride。
+
+#### 8.5.3 【已定论·反汇编】表和表怎么联系：`_resGetDatByTable`
+
+这是本轮最重要的机制发现。`src\fw\res.c:3479` 的 `_resGetDatByTable`（`0x1DAA169`）：
+
+```c
+int _resGetDatByTable(cb, int* arr, const char* name) {
+    // arr[6] 的 0x3C0 位段必须等于 0x140，否则断言 "Sect_Table"
+    if ((arr[6] & 0x3C0) != 0x140) { assert; debugbreak; }
+
+    int count = arr[1];                       // 元素个数
+    int base  = arr[0];                       // 元素数组基址
+    for (int i = 0; i < count; i++) {
+        int e = cb(base, arr[i]);             // ← arr[i] 作为下标取出第 arr[i] 条 entry
+        if (strcmp(e->names[0], name) == 0)   // 按 names[0] 线性查找
+            return e;
+    }
+    error("undefined %s", name);              // 找不到即报错
+}
+```
+
+两个包装函数只是**传入不同的组号**：
+
+| 包装函数 | 回调 | 组号 | 含义 |
+|---|---|---|---|
+| `sub_1DABB3D` (`0x1DABB3D`) | `sub_1DABBDD` → `sub_1DABD69(_, **0**, idx)` | **0** | ds0 = `res` |
+| `sub_1DAC3F9` (`0x1DAC3F9`) | `sub_1DABC1D` → `sub_1DABD69(_, **2**, idx)` | **2** | ds2 = `asset` |
+
+而 `sub_1DABD69(ds, group, index)` 的实现是：
+
+```c
+return *(u32*)( *(u32*)( *(u32*)dword_171D330[ds] + 4 ) + 8*group ) + 32*index;
+//                                                              ^ 组目录   ^ 32 字节/条
+```
+
+即 **`hdrArray(group) + 32 * index`** —— 按 index 返回该组第 index 条 entry。
+
+**这条反汇编链独立印证了数据统计的结论**：tbl 的元素值就是 **ds2 数组的下标**
+（数据侧：192,781 条强命中；代码侧：group 2 = asset）。两条完全独立的路径得出同一答案。
+
+用 group 2 解释入口 PRES 的 46 张表，语义全部自洽：
+
+```
+SystemSe_tbl              [12..20]  -> SE_SYS_ENTER1 ... SE_SYS_PAGE2
+Ssa_System_Cursor         [21, 23]  -> Ssa_System_Cursor, System_Cursor
+Ssa_System_Cursor_Follow  [22, 23]  -> Ssa_System_Cursor_Follow, System_Cursor
+System_Fade_White_In_tbl  [25, 24]  -> System_Fade_White_In, System_Tip8x8
+Chat_Scroll_idx_tbl       [33]      -> Layout_Chat
+```
+
+注意 `System_Fade_White_In_tbl = [25, 24]`：第 0 项是主体，第 1 项 `24`
+是共用的 `System_Tip8x8`。**同一资源可被多张表重复引用**，无需额外机制。
+
+#### 8.5.4 【已澄清】entry `+0x18` 是运行时字段，不是磁盘表头
+
+两个包装函数返回：
+
+```c
+return (*(_DWORD*)(e + 24) >> 10) & 0xFFF;   /* 取 entry+0x18 的 bit10..21（12 位） */
+```
+
+`+0x18` 看起来像"表头字段"，但全量实测（GER + GE2RB，3,403,114 条）：
+
+| 字段 | 全量结果 |
+|---|---|
+| `entry+0x10` | **3,403,114 全 0** |
+| `entry+0x14` | **3,403,114 全 0** |
+| `entry+0x18` | **3,403,114 全 0** |
+
+**结论**：`+0x18` 是**载入时填充的运行时字段**（12 位，形似 Sect/Label 编码），
+磁盘上恒为 0。这解释了为何反汇编会读它 —— 但**它不能作为磁盘格式的一部分**。
+这与 §6.1 把 `+0x10/+0x14/+0x18` 标为"保留字段"一致，现补上"运行时有用"这一层。
+
+#### 8.5.5 tbl 的跨表联系（用于打通拓扑）
+
+由 §8.5.3 可知，tbl 与外部世界的**唯一联系**是"元素值 = 组内下标"：
+
+```
+tbl[i] --(数值)--> group[X] 的第 tbl[i] 条 entry --> names[0] 名字 / refPath 路径
+```
+
+因此重建表关系图的正确做法是：
+
+1. 对每个 country，导出全部 8 个组的 entry 数组（保持文件顺序，**含 type 0 占位**）；
+2. 对每条 tbl，用元素值去 `group[2]`（绝大多数）或 `group[0]` 取 entry；
+3. 取到 entry 后按 `names[0]` 判别语义，按 `refPath`（B 型）或内嵌数据（F 型）继续下钻。
+
+> **不要跳过 type 0 占位**：下标是数组位置，删掉任何一条都会让后续全部错位。
+
+#### 8.5.6 【已裁决】tbl 有三个宿主，由消费代码选择
+
+此前的悬案（`GameBgm_tbl` 用 ds2 解释不通）已经用数据裁决清楚了。
+
+**裁决方法**：对每张表，分别用 group 0 / 1 / 2 / 4 / 6 / 7 的 entry 数组去解释它的元素值，
+看哪个组能让所有被指向的条目**名字与表名同族**（共享 ≥4 字符前缀）。
+
+**入口 PRES 的判决**：
+
+| 表名 | 值域 | 只有哪个组能解释 | 解释结果 |
+|---|---|---|---|
+| `GameBgm_tbl` | max 87 | **g4（conf，88 条）** 唯一 | `bgm_result`, `bgm_god_eater_resurrection`, `bgm_anagura_001` … ✅ 全是 bgm |
+| `SystemSe_tbl` | max 20 | **g2（asset，67 条）** 语义正确 | `SE_SYS_ENTER1` … `SE_SYS_PAGE2` ✅ 全是 SE |
+| `DefGameBgm_tbl` | max 15 | g4 唯一 | `bgm_result` ✅ |
+| `Chat_Bg_idx_tbl` | max 24 | g2 语义正确 | `System_Tip8x8` ✅ |
+| `Ssa_System_Cursor` | max 23 | g2 语义正确 | `Ssa_System_Cursor`, `System_Cursor` ✅ |
+
+**关键**：`GameBgm_tbl` 按 g2 解释会越界（max 87 ≥ 67）且语义不符；
+按 **g4** 解释则 82 个值全部落在 `bgm_*` 上。而 g4 恰好 88 条 —— 值域 `[6..87]` 完美贴合。
+
+**全库统计（GER + GE2RB）**：
+
+| 结果 | 条数 |
+|---|---|
+| 最佳宿主 = **g2（asset）** | **192,781** |
+| 最佳宿主 = **g4（conf）** | **2,174** |
+| 最佳宿主 = **g6（text）** | **72** |
+| 值域超出所有组，无法解释 | 66,674 |
+| 在值域内但无名字同族 | 64,071 |
+
+**族名 → 宿主高度一致**（说明不是噪声）：
+
+| 表族 | 条数 | 宿主 |
+|---|---|---|
+| `EnemyEntry` / `GeometryVolume` | 各 11,478 | g2 |
+| `Oracle` | 11,466 | g2 |
+| `QuestFlow` | 10,956 | g2 |
+| `Layout_Layout_obj` | 9,290 | g2 |
+| `PC_Face_obj` / `PC_Hair_obj` | 各 8,935 | g2 |
+
+> **结论**：`tbl` 的宿主**不是文件自描述的，而是由消费它的代码决定**。
+> 同一个 PRES 内，音效表用 asset 组、BGM 表用 conf 组、文本索引表用 text 组。
+> 反汇编里 `_resGetDatByTable` 只提供了 group 0 和 group 2 两个包装，
+> 说明**还存在其它未定位的包装函数**（至少 g4 / g6 各一个）。
 
 #### 待补充清单（`tbl`）
 
 | 项目 | 现状 | 需要的证据 |
 |---|---|---|
-| ~~tbl 载荷是否纯 u32 数组~~ | ✅ 已定论：是，无头部 | — |
-| ~~tbl 值的宿主~~ | ✅ **主流宿主 = 同 country 的 ds2 下标** | 见 §8.5.1 |
-| `GameBgm_tbl` 这类非 ds2 宿主的族 | 未收敛 | 逐族定位（从 674,352 条 no_host 里分类） |
-| `_idx_tbl` 与 `_tbl` 的语义差别 | 仅观察到后缀，未验证差别 | 对照同族两张表 |
-| 表内元素的排列顺序是否即游戏内顺序 | 未验证（`GameBgm_tbl` 非升序） | 运行时观察 |
+| ~~tbl 载荷是否纯 u32 数组~~ | ✅ 已定论：是，无头部（§8.5.1） | — |
+| ~~tbl 内部有无表头~~ | ✅ **已定论：无。表头在 entry 里** | 四项假说全部否证 |
+| ~~"形状"从哪来~~ | ✅ **已定论：消费代码决定**（§8.5.2） | 同族长度恒定 |
+| ~~tbl 值的宿主~~ | ✅ **已定论：多宿主，由消费代码选择**（§8.5.6） | g2 主力 + g4/g6 |
+| ~~表和表怎么联系~~ | ✅ **已定论：`_resGetDatByTable` 按名线性查找** | §8.5.3 |
+| ~~entry `+0x18` 是否为表头~~ | ✅ 已澄清：运行时字段，磁盘恒 0 | §8.5.4 |
+| ~~`GameBgm_tbl` 的宿主~~ | ✅ **已裁决：g4（conf）** | 值域与语义双双吻合 |
+| 定位 g4 / g6 的包装函数 | 未做 | 反汇编搜索 `sub_1DABD69(_,4,_)` 的调用方 |
+| 66,674 条"值域超界"表用的是哪个宿主 | 未解 | 可能是全局 ID 空间或 ds2 之外的索引 |
+| 各固定形状族的字段语义（`PC_Face_obj` 的 3 个 u32 各是什么） | 未解 | 运行时 / 反汇编 |
+| `_idx_tbl` 与 `_tbl` 的语义差别 | 未验证 | 对照同族两张表 |
 | 负值（`0xFFFFFFFF` 等）的含义 | 77,189 次 `-1`，语义未解 | 找哨兵用法 |
-| `PredatorArtsRequire_tbl` 这类 2,641 words 的大表结构 | 未验证是否分组成行 | 试按固定字段数切分 |
-| 与 `tr2` 表的关系 | 未验证 | 抽样对照同名 tr2 |
+| 与 `tr2` 表的关系 | 未验证 | 见 `tr2-reading.md` |
 
 ### 8.6 `text`（dataset 6）—— 文本
 
@@ -1321,7 +1471,7 @@ if (FileA == INVALID_HANDLE_VALUE) {
 
 ## 12. 与主机版（PSV / PS4）的差异
 
-主机版规格见 `G:\Projects\GodEaterTools\docs\res-容器格式说明.md`。同名字段不同义的地方已在下表标红。
+主机版规格见外部仓库 **GodEaterTools** 的 `docs/res-容器格式说明.md`。同名字段不同义的地方已在下表标红。
 
 | 项 | PSV / PS4 | PC |
 |---|---|---|
@@ -1347,7 +1497,7 @@ if (FileA == INVALID_HANDLE_VALUE) {
 
 ## 13. 对一手规格 v1.7 的勘误
 
-依据：`G:\Downloads\噬神者PC版本文件结构1.7(1).txt`（2024-11-23）。
+依据：社区流传的一手规格文档 **`噬神者PC版本文件结构1.7.txt`**（版本 1.7，2024-11-23）。
 
 | v1.7 的表述 | 实测结论 | 严重度 |
 |---|---|---|
@@ -1405,7 +1555,11 @@ if (FileA == INVALID_HANDLE_VALUE) {
 | **rtbl 槽内布局（固定 0x200 步长、地址恒 0x20、nameCount 恒 4）** | **189,794 / 189,794** |
 | **rtbl 槽路径 = qpck 查找键** | **189,794 / 189,794 命中** |
 | **tbl 载荷 = 纯 u32 数组，无头部** | 869,379 / 869,379 |
-| **tbl 主流宿主 = 同 country 的 ds2 下标** | 192,781 条强命中，ds2 优于其它宿主 |
+| **tbl 载荷内部无表头**（四项假说全否证） | §8.5.1；首字=数据的反证 |
+| **tbl 主流宿主 = 同 country 的 ds2 下标** | 数据 192,781 条强命中 + 反汇编 group 2 |
+| **tbl 跨表联系 = `_resGetDatByTable` 按名线性查找** | 反汇编 `0x1DAA169` + 两个 group 回调 |
+| **tbl "形状"由消费代码决定（非文件自描述）** | 同族长度恒定：`ScriptSetup` 4,879/4,879 恒 7 |
+| **entry `+0x18` 是运行时字段，磁盘恒 0** | 3,403,114 / 3,403,114 |
 | **B = 欠条 / F = 已兑现，属跨平台语义** | 反汇编 `sub_1DAA4F0` 标志位；**推翻原"qpck 取代 rdp 所以只需两种"的因果** |
 | **qpck 未命中 ⇒ `CreateFileA` 回退磁盘** | 反汇编 `sub_1BB5579`（`resfileOpen`）双分支 |
 | 子 PRES 递归判定 = `names[1] == "res"` | 反汇编 `sub_1DAA5E0` + 常量 `0x118B3D8` = `"res"` |
@@ -1420,7 +1574,7 @@ if (FileA == INVALID_HANDLE_VALUE) {
 | `packageId = 0x7C6E` 的用途 | 分布已查清（见 §3.1），**语义仍未解** | 暂不影响读写 |
 | `ds3 unk` 的用途 | 两作恒空 | 暂不影响 |
 | `prx` 在 PC 上是否被加载 | 未验证 | 暂不影响 |
-| `tbl` / `text` 载荷的内部语义 | tbl 宿主已定（§8.5.1），但非 ds2 宿主的族未收敛 | 影响改表 |
+| `tbl` / `text` 载荷的内部语义 | tbl 结构已定（§8.5.1–8.5.4）；仅剩各族的字段含义与非 ds2 宿主 | 影响改表 |
 | 各属性的真正含义（`CHUNK` / `_COMPATVITA` 等） | 命名推测；**`_COMPAT` 已升级为已验证**（写 bit31） | 影响改包行为 |
 | PRES 的**写入**（打包） | 本仓库未实现 | 参考实现 `Pres.Serialize()` 已可写出 |
 | `prx` 模块名 → 真实文件的解析路径 | 未知 | 影响依赖分析 |
@@ -1449,33 +1603,38 @@ if (FileA == INVALID_HANDLE_VALUE) {
 
 | 来源 | 位置 | 用途 |
 |---|---|---|
-| 一手规格 v1.7 | `G:\Downloads\噬神者PC版本文件结构1.7(1).txt` | 字段命名、tbl ×4、尾部区块的原始认识 |
-| C# 参考实现 | `_temp/202609131828/src/Pres.cs`（**不可提交进本仓库**） | pool 排序算法（`FirstPoolOffset`）、`Measure/WriteNames` 布局、`_EXISTS=` 结构 |
-| 主机版工具链 | `G:\Projects\GodEaterTools\`（`Pres.cs` / 文档） | 类型码语义、`EXCLUDE_RDP`、`self`/`prx` 命名 |
+| 一手规格 v1.7 | 外部文档 `噬神者PC版本文件结构1.7.txt` | 字段命名、tbl ×4、尾部区块的原始认识 |
+| C# 参考实现 | 他人分享的 `Pres.cs`（**不在版本控制内，不可提交**） | pool 排序算法（`FirstPoolOffset`）、`Measure/WriteNames` 布局、`_EXISTS=` 结构 |
+| 主机版工具链 | 外部仓库 **GodEaterTools**（`Pres.cs` / 文档） | 类型码语义、`EXCLUDE_RDP`、`self`/`prx` 命名 |
 | 反汇编 | `GER.exe` / `GER.exe_full.i64` | 校验 `version==3`、属性从 `names[4]` 起、类型分派 |
-| 真实数据普查 | 本仓库 `_temp/pres_*.py` | 全部量化结论 |
+| 真实数据普查 | 自写的普查脚本（本地，未入库） | 全部量化结论 |
 
 > C# 参考实现属他人分享物，**只作为规格假设来源**。本文不含其原始代码文本，
 > 所有算法均为按行为独立重写并用真实数据验证。
 
-### 复现脚本（均在 `_temp/`，非正式代码）
+### 复现方法（不依赖具体脚本文件）
 
-| 脚本 | 作用 |
-|---|---|
-| `pres_probe.py` | 入口 PRES 头部 + 结构 dump |
-| `pres_invariants.py` | 对齐 / 连续性不变量 |
-| `pres_predict.py` | **逐地址预测器（本文核心证据）** |
-| `pres_tail.py` | 尾部共享池 + ds7 形状 |
-| `pres_exists.py` / `pres_exists2.py` | `_EXISTS=` 位图裁决 |
-| `pres_stats.py` | §5.3 全量统计 |
-| `pres_attrs.py` | §6.3 属性分布 |
-| `pres_hashkey.py` | §10.1 命中率 |
-| `pres_q1.py` | **§10.1.1 哈希键裁决 + §10.1.2 未命中归因 + `_EXISTS=` 全量** |
-| `pres_norm.py` | **§10.1.1 五种归一化变体的数据裁决** |
-| `pres_pkgid.py` | §3.1 `packageId` 分布 |
-| `rtbl_probe.py` / `rtbl_dump.py` / `rtbl_verify.py` | **§8.7.1 rtbl 槽布局推导与全量验证** |
-| `tbl_probe*.py` / `tbl_host*.py` / `tbl_classify.py` / `tbl_final.py` | **§8.5.1 tbl 宿主裁决** |
-| `pres_usize.py` / `pres_extra2.py` / `pres_names.py` / `pres_entry.py` | 各专项核查 |
+本文所有量化结论由**一次性普查脚本**产生，这些脚本属本地中间产物、**不随仓库发布**。
+读者若要复核，按下表**自己写等价脚本**即可——每项都给出明确判据与期望数值。
+
+| 复核项 | 做法 | 期望结果 | 章节 |
+|---|---|---|---|
+| 头部字段 | 遍历全部 PRES，统计 `format`/`version`/`+0x04`/`+0x14`/`+0x18`/`sign` | 8 / 3 / 0 / 0 / 0 / 1，各 8,586 | §3 |
+| country 布局 | 校验 `pkgSize == 0x20 + cc*8 + Σlen`（cc≥2）；cc=1 时 body 起于 `0x20` | 4,614 / 3,972 全通过 | §4 |
+| entry 头连续性 | 逐组比对 `hdr == country+0x40` 并累加 `cnt*32` | 105,688 / 105,688 连续 | §5.2 |
+| **逐地址预测（核心）** | 按 §7.1/§7.2 重算每条 entry 的 `dataAt` / `nameTableAt` 与文件比对 | **3,403,114 / 3,403,114 一致** | §7.5 |
+| 尾部共享池 | 按 `names[3]` 去重后按首次 `dataAt` 升序链式排布，对齐 16 | 8,523 / 8,523 精确 | §7.3 |
+| `_EXISTS=` 位图 | 逐 bit 比对 `rtbl[i*0x200] != 0` | 4,614 / 4,614 精确 | §8.7 |
+| rtbl 槽布局 | 校验 `raw0>>28==0xB`、低 28 位 == `0x20`、`+0x0C==4`、`+0x10..1F` 全 0 | 各 189,794 / 189,794 | §8.7.1 |
+| tbl 无表头 | 检验 `word[0]==size-1`、`size % word[0]`、`word[1]==size/2` 等假说 | 命中率 0.4%~20.1%，均否定 | §8.5.1 |
+| tbl 宿主 | 对每张表用各组 entry 数组解释其值，看被指向名是否与表名同族 | ds2 192,781 / ds4 2,174 / ds6 72 | §8.5.6 |
+| `+0x10/14/18` | 全量扫描三字段 | 3,403,114 全 0 | §8.5.4 |
+| 哈希键 | 拿真实 TOC 当答案，对 `RefPath` 套 5 种归一化变体比命中率 | 转大写 98.83%/97.69%，其余 0% | §10.1.1 |
+| CRC64 表 | 用多项式 `0x95AC9329AC4BC9B5` 建反射表，与二进制比对 | `tab[1]=0x7AD870C830358979` 吻合 | §10.1.1 |
+| `packageId` 分布 | 全量统计该 u16 | 11 种取值，`0` 占 8,566 | §3.1 |
+| 未命中路径归因 | 按扩展名/前缀分类 `RefPath` 查不到 TOC 的条目 | `prx` 14,846 + 音频等 | §10.1.2 |
+
+> "期望结果"列的数字均为本文各节实测值，可直接作为自写脚本的正确性基准。
 
 ---
 
