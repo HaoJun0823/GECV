@@ -365,8 +365,21 @@ uint32 addr  = raw & 0x0FFFFFFF;   // 低 28 位，绝对文件偏移
   —— 指向 res 缓冲内的**数据**。PC 只用 `0xF`。
 - `0x3` / `0x4` / `0x5` / `0x6` 属于 rdp 体系（见 §11、§12），**PC 资产从不出现**。
 
-> 这解释了 PC 与主机版的根本差异：**qpck 取代了 rdp 的角色**，
-> 所以 PC 只需要"路径引用"和"内嵌数据"两种形态，不需要"数据在哪张 rdp 的第几块"。
+> **⚠️ 结论修正（逆向实证，本轮推翻此前表述）**
+>
+> 此前这里写的是"qpck 取代了 rdp 的角色，所以 PC 只需要两种形态"。
+> **这个因果是反的。** B/F 的分工与 qpck 无关，它是 `res.c` 里**跨平台共用**的一套语义：
+>
+> - **B = 延迟兑现的欠条**：`sub_1DAA4F0`（`0x1DAA4F0`）把低 28 位变成"指向路径串的指针"，
+>   并置标志位 `0x2000000` —— 引擎借这个位判断"这条还没取数据，访问前要先兑现"。
+>   父 PRES 加载时**不**读子资源，只登记路径；真正取数据发生在 `resReadReferRes`
+>   （`sub_1DAD9FE`），且必然会**再开一次文件**。
+> - **F = 随包一次性读入**：数据在 PRES 自身内部（pool / 尾部共享池），
+>   `readEnvelope` 整体读入后即已在内存，**不需要第二次 I/O**。
+>
+> qpck 改变的只是 B **去哪兑现**这一层后端，而且该后端**带文件系统回退**
+> （见 §10.3，`sub_1BB5579` 查不到 qpck 会落到 `CreateFileA`）。
+> PSV/PS4 用 rdp 时，同样的 B/F 语义依然存在。
 
 ### 6.3 名字区与名字槽语义
 
@@ -417,7 +430,24 @@ nameTableAt → ┌ ptr[0] ┐
 
 | 属性 | 语义 | 证据强度 |
 |---|---|---|
-| `_COMPAT` / `_COMPATVITA` | 兼容性声明（PS4 / PSV 移植残留） | 【推测】命名+分布 |
+| `_COMPAT` / `_COMPATVITA` | 兼容性声明（PS4 / PSV 移植残留）；**`_COMPAT` 被引擎读取并写入 entry 标志位 bit31** | 【反汇编】见下方 ± `_COMPATVITA` 仍为【推测】 |
+
+**`_COMPAT` 的落点（本次新解出）**
+
+`sub_1DAC83A`（`0x1DAC83A`，遍历所有 dataset 的所有 entry 做重定位的总装函数）：
+
+```c
+// 每条 entry 处理时：
+v18 = v10[6] & 0x7FFFFFFF
+    | ((unsigned __int8)sub_1DAB92C(v10, "_COMPAT") << 31);   // ← 属性 → bit31
+v10[6] = v18;
+```
+
+即：**`_COMPAT` 不是纯注释型残留标记，它会被转成 entry 运行时标志位的最高位（bit31）**，
+与其它重定位/基址调整同步完成。这是 §6.3 里"属性是否被消费"第一次拿到直接证据。
+
+> 仍未解的部分：bit31 被置位后**谁去读它、影响什么行为**（推测是走兼容数据路径），
+> 以及 `_COMPATVITA` 是否有对应的独立落点——本次未找到 `_COMPATVITA` 的引用点。
 | `EXCLUDE_RDP` | 该资源**不在** rdp/qpck 内，走本地路径（主机版对应类型 3） | 【反汇编】`resFilePath` 的 case 3 取 `PATH` 属性 |
 | `EXTERN_RDP` | 外部 rdp 引用（PC 上 80 条，全在 `x004_vag.res`） | 【推测】命名 |
 | `_EXISTS=` | rtbl 的槽占用位图，见 §8.7 | 【实测】8/8 精确 |
@@ -626,6 +656,53 @@ assert align16(cursor) == file_size               # ← 实测全部成立
 - 条目本身只是一个路径引用，`dataAt` 指向 pool 里的路径串。
 - 目标可能是一个 `Pres` 魔数的 blob，也可能是 `blz4` 压缩的 PRES（见 §9）。
 - 递归时**必须用 `seen` 去重**，否则会因重复引用而爆炸。
+
+#### 8.0.1 【反汇编】递归加载的判定与实际落点
+
+判定函数 `sub_1DAA5E0`（`0x1DAA5E0`），被 `resReadReferRes`（`sub_1DAD9FE`）调用：
+
+```c
+v2 = (a1[6] >> 6) & 0xF;                    // 取 dataset 号
+if (v2 != 2 && v2 != 4)                     // ← 断言：只允许 ds2(asset) / ds4(conf)
+    __debugbreak();
+v4 = *(const char **)(a1[2] + 4);           // names[1]，即扩展名
+return strcmp(v4, "res") == 0;              // 常量 "res" @ 0x118B3D8
+```
+
+调用侧（`sub_1DAD9FE`）：
+
+```c
+if (sub_1DAA5E0(v4)) {                      // 是子 res ⇒ 走"再开一次文件"
+    sub_1DAB7DC(Buffer, v4);                //   拼路径
+    sub_1E68FA2(dword_171E330, Buffer);     //   重新打开
+} else if (!sub_1DAA790(a3, v4)) {          // 否则直接从已读入的缓冲取数据
+    ...
+}
+```
+
+**要点**：
+
+- **递归判定比较的是扩展名 `names[1]`**，不是 dataset 号本身。
+- 但入口断言限定了**只有 ds2(asset) 与 ds4(conf) 的条目会走到这个判定**。
+  这与 §5.3「ds0 的条目 100% 是 B」不矛盾：ds0 是"包声明"，
+  而**实际触发递归加载**的入口是 ds2 / ds4。
+
+#### 8.0.2 【推测】为什么必须套娃（res 引用子 res）
+
+机制已由反汇编确证，但"为何这样设计"是推断，**无官方开发文档佐证**。三条递进理由：
+
+1. **加载单元 ≠ 逻辑单元**。`resReadInst`（`sub_1DACE8B`）的 I/O 粒度是
+   **整个 PRES 文件**（`readEnvelope` 整块读入）。要么整读，要么不读。
+   要实现"只加载当前场景的资源"，唯一出路就是把大包拆成小包按需读——即套娃。
+2. **语言维度与功能维度正交**。`countryCount` 是**文件内**的 6 语言分组。
+   若贴图包本身无文本就不该带 country（实测 3,972 个文件 `countryCount = 1`）。
+   套娃让"多语言包"与"单语言包"能自由混合；做成一坨就得给每个子包复制 6 份语言槽。
+3. **补丁替换粒度 = PRES 文件粒度**。多归档查找按路径前缀命中首个归档（§10.3），
+   所以套娃越细，补丁打得越准。旁证：GE2RB 的 482 个 patch 条目里 471 个是**新增**
+   （细粒度增量），GER 的 101 个则**全是替换**——两作用法不同正源于此。
+
+> **对 §5.3 那条"asset F 条目全部在尾部池"不变量的含义补充**：
+> asset 既可能内嵌也可能引用，正是这种"整包读入 + 指针兑现"的混合模型的具体体现。
 
 #### 待补充清单（`res`）
 
@@ -1109,6 +1186,41 @@ for (desc in [bin_patch, bin, conf, data]) {      // 0x1BB5201 里按此序装�
 | 命中策略 | **固定顺序、首个命中即返回**（确实是"先入为主"，但作用域是"前缀匹配到的归档"） |
 | 与 mod 的关系 | 把文件放进 `bin_patch.qpck` 且**路径前缀与 `bin` 一致**时，会先命中 patch——这就是 mod 覆盖能生效的原因 |
 
+#### 10.3.1 【反汇编】qpck 查不到会回退到真实文件系统
+
+**这是本轮最重要的发现，此前完全未记录。**
+`resfileOpen`（`sub_1BB5579`，`src\fw\resfile.c`）打开一个路径时走**两条分支**：
+
+```c
+sub_1BB4DB6(Src, &FileName, &lDistanceToMove, &v21);   // 解析 ";offset;size" 后缀
+v9 = sub_1BB3B8D(v24, &v22);                            // ① 先查 qpck
+if (v9) {
+    *(_DWORD *)(v1 + 28) = v9;
+    *(_DWORD *)v1        = -2;                          // handle = -2 ⇒ 来自归档
+    return v1;
+}
+// ② qpck 未命中 ⇒ 回退到磁盘
+p_FileName = (FileName == '/') ? &v27 : &FileName;      // 去掉前导 '/'
+FileA = CreateFileA(p_FileName, 0x80000000, 1, NULL, 3, 0x80, NULL);
+if (FileA == INVALID_HANDLE_VALUE) {
+    printf("fileOpen error: filename=%s, GetLastError=%d\n", Src, GetLastError());
+    return 0;
+}
+*(_DWORD *)v1 = FileA;                                  // 真实文件句柄
+```
+
+**含义**：
+
+| 结论 | 说明 |
+|---|---|
+| qpck 不是唯一数据源 | 它是挂在文件系统**前面**的一层，命中就用，未命中就落盘找 |
+| handle `-2` 是哨兵 | 后续读写据此区分"归档内数据"与"真实文件" |
+| **直接解释了 §10.1.2 的 22,913 条未命中** | 它们不是"错误路径"，而是**合法地回退到磁盘**去取 |
+| 对 mod 的含义 | 想覆盖一个资源，放进 qpck 只是**其中一条路**；直接放同名真实文件同样有效，甚至更简单 |
+
+> 这条也让 §10.1.2 的结论从"（推测）它们不在包里"升级为
+> **"（确证）它们在包外，且引擎有明确的落盘机制去取"**。
+
 归档前缀常量（`src\app_mod\patch_ix.cpp`）：
 
 | 归档 | 前缀 | 说明 |
@@ -1167,8 +1279,14 @@ for (desc in [bin_patch, bin, conf, data]) {      // 0x1BB5201 里按此序装�
 | **TOC 二分查找** | `0x17E7E9E` | 步长 20 字节，比较 `*(u64*)(entry+8)` |
 | **哈希归一化回调** | `0x1BB3ADA` | 内部调 `sub_18D3110(..., toupper)`；由 `0x1BB5201` 装到 `v6[3]` |
 | qpck 初始化 | `0x1BB5201` | 依序加载 `bin_patch` → `bin` → `conf` → `data`（对应 `src\app_mod\patch_ix.cpp`） |
+| **`resfileOpen` 双分支** | `0x1BB5579` | **先查 qpck（`handle = -2`），未命中则 `CreateFileA` 回退到磁盘**；失败报 `fileOpen error: filename=%s` |
+| `resReadInst` | `0x1DACE8B` | 整个 PRES 的装载入口；`readEnvelope` 整块读入 + `sub_1DAC83A` 重定位 + `sub_1DAD501` 装载 prx 模块 |
+| **递归判定 `isSubRes`** | `0x1DAA5E0` | 断言 dataset ∈ {2,4} 后比较 `names[1]` 与常量 `"res"`（`0x118B3D8`） |
+| `resReadReferRes` | `0x1DAD9FE` | **只有子 res 才重新开文件**（`sub_1E68FA2`），否则从已读缓冲取 |
+| `_COMPAT` → bit31 | `0x1DAC83A` | 遍历全部 entry 做重定位时把 `_COMPAT` 写入标志位最高位 |
+| `readReferTableDat` | `0x1DAABA2` | rtbl 按 `0x200` 步长读单个槽；类型白名单 3,4,5,6,B,C,D,E,F |
 
-**这两点非常重要，直接修正了此前的理解**：
+**这几点非常重要，直接修正了此前的理解**：
 
 1. 引擎**保留了完整的 3/4/5/6/C/D 类型码逻辑**，但 PC 资产从不触发
    —— 说明 `res.c` 是跨平台共用代码，只是 PC 的资产打包器不产出 rdp 类型。
@@ -1181,7 +1299,23 @@ for (desc in [bin_patch, bin, conf, data]) {      // 0x1BB5201 里按此序装�
 | `qpck` 查找入口（哈希 → 数据） | 未定位 | 从 `resFilePath` 的返回值向上追 |
 | `sub_1BB584B` / `sub_1BB58BB` | 未分析 | 疑似路径拼接 / 去重 |
 | `packageId = 0x7C6E` 的用途 | 未解 | 找读写它的代码 |
-| GE2RB.exe 的对应地址 | **未做** | 同一套 `res.c` 应可直接定位（`Pres` 字符串引用点） |
+| GE2RB.exe 的对应地址 | **已做**：`res.c` 模块整体同构，见 §11.1 | — |
+
+#### 11.1 GE2RB.exe 对照（本次完成）
+
+此前 §14.2 标为"未做"。现已定位并确认**同一套 `src\fw\res.c`**：
+
+| 项 | GER | GE2RB | 依据 |
+|---|---|---|---|
+| `src\fw\res.c` 串地址 | `0x1234418` | `0x116C49C` | 字符串表命中 |
+| `src\fw\resfile.c` 串地址 | `0x125C244` | `0x11DDCE4` | 同上 |
+| `qpack error for` 串地址 | `0x1403D1D` | `0x13EA495` | 同上 |
+| `readEnvelope` | `0x1DAA9B9` | `0x1BC9AA0` | 同为 `size=0x1E6` |
+| `resAllocExtEnd` | `0x1DAAF75` | `0x1BCA026` | 同为 `size=0x1A4`…（略小于 GER 的 `0x1BF`，主体一致） |
+| 模块起点 | `0x1DAA099` | `0x1BC9180` | 同为 `size=0xCC`，且同样引用 `src\fw\res.c` |
+
+**结论**：两作共用同一份 `res.c`，PRES 格式与本文全部 machine-level 结论**对 GE2RB 同样成立**。
+§14.2 中"GE2RB.exe 的对应地址未做"一项可以结清。
 
 ---
 
@@ -1272,6 +1406,12 @@ for (desc in [bin_patch, bin, conf, data]) {      // 0x1BB5201 里按此序装�
 | **rtbl 槽路径 = qpck 查找键** | **189,794 / 189,794 命中** |
 | **tbl 载荷 = 纯 u32 数组，无头部** | 869,379 / 869,379 |
 | **tbl 主流宿主 = 同 country 的 ds2 下标** | 192,781 条强命中，ds2 优于其它宿主 |
+| **B = 欠条 / F = 已兑现，属跨平台语义** | 反汇编 `sub_1DAA4F0` 标志位；**推翻原"qpck 取代 rdp 所以只需两种"的因果** |
+| **qpck 未命中 ⇒ `CreateFileA` 回退磁盘** | 反汇编 `sub_1BB5579`（`resfileOpen`）双分支 |
+| 子 PRES 递归判定 = `names[1] == "res"` | 反汇编 `sub_1DAA5E0` + 常量 `0x118B3D8` = `"res"` |
+| 递归入口仅限 ds2(asset) / ds4(conf) | 反汇编 `sub_1DAA5E0` 的 `(flags>>6)&0xF ∉ {2,4}` 断言 |
+| **GE2RB 与 GER 的 `res.c` 同构** | 逐函数地址对照，见 §11.1 |
+| `_COMPAT` 被写入 entry 标志位 bit31 | 反汇编 `sub_1DAC83A` |
 
 ### 14.2 未验证 ⚠️
 
@@ -1281,8 +1421,7 @@ for (desc in [bin_patch, bin, conf, data]) {      // 0x1BB5201 里按此序装�
 | `ds3 unk` 的用途 | 两作恒空 | 暂不影响 |
 | `prx` 在 PC 上是否被加载 | 未验证 | 暂不影响 |
 | `tbl` / `text` 载荷的内部语义 | tbl 宿主已定（§8.5.1），但非 ds2 宿主的族未收敛 | 影响改表 |
-| 各属性的真正含义（`_COMPAT` / `CHUNK` 等） | 命名推测 | 影响改包行为 |
-| GE2RB.exe 的反汇编对照 | **未做** | 两作应一致，但无证据 |
+| 各属性的真正含义（`CHUNK` / `_COMPATVITA` 等） | 命名推测；**`_COMPAT` 已升级为已验证**（写 bit31） | 影响改包行为 |
 | PRES 的**写入**（打包） | 本仓库未实现 | 参考实现 `Pres.Serialize()` 已可写出 |
 | `prx` 模块名 → 真实文件的解析路径 | 未知 | 影响依赖分析 |
 | `is14` 未命中的音频走哪条加载路径 | 未知 | 影响音频 mod |
@@ -1296,6 +1435,11 @@ for (desc in [bin_patch, bin, conf, data]) {      // 0x1BB5201 里按此序装�
 - 官方包存在**资源实例身份级别**的复用：同名同内容也可能各写一份（主机版同样观察到此现象）。
   该身份**不存在于 PRES 结构里**，因此全重压模式下难以做到 byte-identical。
 - `names[4]` 有时是第二条路径（8,334 次），与 `names[3]` 前缀形态不同，用途未解。
+- **`_COMPAT` 置位后的 bit31 由谁消费**：已确证写入（`sub_1DAC83A`），
+  但读取方与影响的行为未定位；`_COMPATVITA` 未找到引用点。
+- **`res` 套娃的三条设计理由（§8.0.2）属推断**：机制（整包 I/O、递归判定、
+  多归档前缀）已由反汇编确证，但"为何设计为套娃"无官方材料，不可当定论。
+- **套娃深度 9 层的成因**：实测可达，但未做运行时加载序列观察验证。
 
 ---
 
